@@ -11,6 +11,7 @@ An installable [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harnes
 ## Features
 
 - Lists archived sessions with their title, workspace, and last update time.
+- Searches archived sessions and filters or groups them by project.
 - Restores a session from **Settings → Archived → Unarchive**.
 - Synchronizes restored sessions back to the existing Harness sidebar.
 - Ships Host and Web Client capabilities in one DSH bundle.
@@ -22,6 +23,8 @@ An installable [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harnes
 - The `web` profile, or another profile that includes the Harness Web UI
 
 Harness does not currently expose a public unarchive API. This plugin serializes the state update through the workspace registry hooks available in the pinned Harness version. Compatibility tests intentionally fail if those hooks disappear in a future release.
+
+Harness also does not expose a safe session-deletion API. The page includes the planned single-session and bulk-delete entry points, but they currently explain this limitation instead of deleting storage files directly. This avoids corrupting session indexes or history; deletion can be enabled once Harness publishes an official API.
 
 ## Install
 

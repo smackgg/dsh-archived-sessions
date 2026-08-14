@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import vm from 'node:vm'
 import { WorkspaceRegistry } from '@deepseek-ai/dsh-workspace'
 import { restoreArchivedSession } from '../src/index.js'
 import { TYPERT } from '../src/typert.host.js'
@@ -9,6 +10,30 @@ import { TYPERT_REMOTE } from '../src/typert.remote-client.js'
 const clientUrl = new URL('../src/client.js', import.meta.url)
 const manifestUrl = new URL('../package.json', import.meta.url)
 const patchUrl = new URL('../cordis.patch.yml', import.meta.url)
+const plain = (value) => JSON.parse(JSON.stringify(value))
+
+async function loadClientExports() {
+  const source = await readFile(clientUrl, 'utf8')
+  let definition
+  vm.runInNewContext(source, {
+    window: {
+      __ModuleLoader__: {
+        load(value) {
+          definition = value
+        },
+      },
+    },
+  })
+
+  assert.ok(definition)
+  return definition.factory((id) => {
+    if (id === 'react/jsx-runtime') return { Fragment: Symbol('Fragment'), jsx() {}, jsxs() {} }
+    if (id === 'react') return { useEffect() {}, useMemo() {}, useState() {} }
+    if (id === '@deepseek-ai/dsh-client-ui-primitives') return { Button() {}, Modal() {} }
+    if (id === '@deepseek-ai/dsh-client-web-react') return { bindSnapshotSelector() {} }
+    throw new Error(`Unexpected client module: ${id}`)
+  })
+}
 
 test('package exposes an installable DSH bundle and Web client', async () => {
   const manifest = JSON.parse(await readFile(manifestUrl, 'utf8'))
@@ -31,6 +56,64 @@ test('client mounts the restore Remote inside an explicitly injected consumer', 
   assert.match(client, /ctx\.remote\.\$mount\(TYPERT_REMOTE\)/)
   assert.match(client, /ctx\.inject\([\s\S]*'remote\.archivedSessions'/)
   assert.doesNotMatch(client, /尚未提供公开的恢复归档 API/)
+})
+
+test('client view model searches archived sessions and filters projects', async () => {
+  const client = await loadClientExports()
+  const rows = client.buildArchivedRows(
+    ['session-1', 'session-2', 'session-3'],
+    {
+      'session-1': { displayTitle: 'Fix login', updatedAt: 1_700_000_000_000 },
+      'session-2': { displayTitle: 'Release notes', updatedAt: 1_700_000_000_100 },
+      'session-3': { displayTitle: 'Orphan task', updatedAt: 1_700_000_000_200 },
+    },
+    [
+      { workspaceId: 'alpha', title: 'Alpha', sessionIds: ['session-1'] },
+      { workspaceId: 'beta', title: 'Beta', sessionIds: ['session-2'] },
+    ],
+    'Ungrouped',
+    'Time unavailable',
+  )
+
+  assert.deepEqual(plain(rows.map((row) => row.id)), ['session-3', 'session-2', 'session-1'])
+  assert.deepEqual(
+    plain(client.filterArchivedRows(rows, 'release', client.ALL_PROJECTS).map((row) => row.id)),
+    ['session-2'],
+  )
+  assert.deepEqual(
+    plain(client.filterArchivedRows(rows, '', 'workspace:alpha').map((row) => row.id)),
+    ['session-1'],
+  )
+  assert.deepEqual(
+    plain(client.filterArchivedRows(rows, 'ungrouped', client.ALL_PROJECTS).map((row) => row.id)),
+    ['session-3'],
+  )
+})
+
+test('client view model groups archived sessions and lists each project once', async () => {
+  const client = await loadClientExports()
+  const rows = [
+    { id: 'session-1', workspaceKey: 'workspace:alpha', workspace: 'Alpha' },
+    { id: 'session-2', workspaceKey: 'workspace:alpha', workspace: 'Alpha' },
+    { id: 'session-3', workspaceKey: client.UNGROUPED_PROJECT, workspace: 'Ungrouped' },
+  ]
+
+  const groups = client.groupArchivedRows(rows)
+  const projects = client.listArchivedProjects(rows)
+
+  assert.deepEqual(plain(groups.map((group) => [group.key, group.rows.map((row) => row.id)])), [
+    ['workspace:alpha', ['session-1', 'session-2']],
+    [client.UNGROUPED_PROJECT, ['session-3']],
+  ])
+  assert.deepEqual(plain(projects.map((project) => project.key)), ['workspace:alpha', client.UNGROUPED_PROJECT])
+})
+
+test('delete controls disclose the missing safe Harness API', async () => {
+  const client = await readFile(clientUrl, 'utf8')
+
+  assert.match(client, /deleteAll:\s*'全部删除'/)
+  assert.match(client, /DeepSeek Harness 当前没有提供安全的会话删除 API/)
+  assert.doesNotMatch(client, /unlink\(|rmSync|removeSession|deleteSession/)
 })
 
 test('Host and Client publish matching strict restore descriptors', () => {

@@ -6,12 +6,14 @@ window.__ModuleLoader__.load({
     Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
 
     const { Fragment, jsx, jsxs } = require('react/jsx-runtime')
-    const { useMemo, useState } = require('react')
+    const { useEffect, useMemo, useState } = require('react')
     const { Button, Modal } = require('@deepseek-ai/dsh-client-ui-primitives')
     const { bindSnapshotSelector } = require('@deepseek-ai/dsh-client-web-react')
 
     const NS = 'settings.archivedSessions'
     const STYLE_ID = 'dsh-archived-sessions'
+    const ALL_PROJECTS = '*'
+    const UNGROUPED_PROJECT = 'ungrouped'
     const inject = ['remote']
 
     const sessionIdSchema = {
@@ -80,6 +82,14 @@ window.__ModuleLoader__.load({
 
       .dhd-archived-heading {
         display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .dhd-archived-heading-copy {
+        display: flex;
+        min-width: 0;
         flex-direction: column;
         gap: 4px;
       }
@@ -94,11 +104,84 @@ window.__ModuleLoader__.load({
 
       .dhd-archived-description,
       .dhd-archived-empty,
-      .dhd-archived-meta {
+      .dhd-archived-meta,
+      .dhd-archived-group-count {
         margin: 0;
         color: var(--dsw-alias-label-secondary);
         font-size: 12px;
         line-height: 18px;
+      }
+
+      .dhd-archived-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .dhd-archived-search,
+      .dhd-archived-project-select {
+        box-sizing: border-box;
+        height: 36px;
+        border: 1px solid var(--dsw-alias-border-l2);
+        border-radius: 10px;
+        outline: none;
+        background: transparent;
+        color: var(--dsw-alias-label-primary);
+        font: inherit;
+        font-size: 13px;
+      }
+
+      .dhd-archived-search {
+        min-width: 0;
+        flex: 1;
+        padding: 0 12px;
+      }
+
+      .dhd-archived-search::placeholder {
+        color: var(--dsw-alias-label-secondary);
+      }
+
+      .dhd-archived-project-select {
+        width: min(220px, 38%);
+        padding: 0 30px 0 10px;
+      }
+
+      .dhd-archived-search:focus,
+      .dhd-archived-project-select:focus {
+        border-color: var(--dsw-alias-label-secondary);
+      }
+
+      .dhd-archived-groups,
+      .dhd-archived-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .dhd-archived-groups {
+        gap: 18px;
+      }
+
+      .dhd-archived-group {
+        gap: 8px;
+      }
+
+      .dhd-archived-group-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 2px;
+      }
+
+      .dhd-archived-group-title {
+        overflow: hidden;
+        margin: 0;
+        color: var(--dsw-alias-label-primary);
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 20px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .dhd-archived-list {
@@ -144,6 +227,51 @@ window.__ModuleLoader__.load({
         padding: 28px 16px;
         text-align: center;
       }
+
+      .dhd-archived-actions {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .dhd-archived-delete {
+        border: none;
+        border-radius: 8px;
+        padding: 6px 8px;
+        background: transparent;
+        color: var(--dsw-alias-label-secondary);
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+        line-height: 18px;
+      }
+
+      .dhd-archived-delete:hover {
+        color: #f05252;
+      }
+
+      .dhd-archived-delete-all {
+        flex: none;
+        color: #f05252;
+      }
+
+      @media (max-width: 640px) {
+        .dhd-archived-heading,
+        .dhd-archived-toolbar,
+        .dhd-archived-row {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .dhd-archived-project-select {
+          width: 100%;
+        }
+
+        .dhd-archived-actions {
+          justify-content: flex-end;
+        }
+      }
     `
 
     if (typeof document !== 'undefined' && document.querySelector(`style[data-plugin-css="${STYLE_ID}"]`) === null) {
@@ -157,13 +285,25 @@ window.__ModuleLoader__.load({
     const zh = {
       nav: '已归档',
       title: '已归档会话',
-      description: '这些会话仍保留在本地，你可以在这里查看或取消归档。',
+      description: '这些会话仍保留在本地。你可以搜索、按项目筛选或取消归档。',
       empty: '暂无已归档会话',
+      emptyFiltered: '没有匹配的已归档会话',
       ungrouped: '未分组',
       unavailableTime: '时间未知',
+      searchPlaceholder: '搜索已归档会话',
+      searchAria: '搜索已归档会话',
+      projectFilterAria: '按项目筛选',
+      allProjects: '所有项目',
+      groupCountOne: '1 个会话',
+      groupCount: '{count} 个会话',
       cancel: '取消归档',
       cancelAria: '取消归档 {name}',
       restoring: '恢复中…',
+      delete: '删除',
+      deleteAria: '删除 {name}',
+      deleteAll: '全部删除',
+      deleteUnavailableTitle: '暂不支持永久删除',
+      deleteUnavailableDescription: 'DeepSeek Harness 当前没有提供安全的会话删除 API。插件不会直接删除底层文件，以免损坏会话索引或历史；该入口将在官方 API 可用后启用。',
       restoreFailedTitle: '取消归档失败',
       restoreFailedDescription: '插件无法更新归档状态，请重试。',
       close: '关闭',
@@ -172,20 +312,35 @@ window.__ModuleLoader__.load({
     const en = {
       nav: 'Archived',
       title: 'Archived sessions',
-      description: 'These sessions remain stored locally. You can view or unarchive them here.',
+      description: 'These sessions remain stored locally. Search, filter by project, or unarchive them here.',
       empty: 'No archived sessions',
+      emptyFiltered: 'No archived sessions match your filters',
       ungrouped: 'Ungrouped',
       unavailableTime: 'Time unavailable',
+      searchPlaceholder: 'Search archived sessions',
+      searchAria: 'Search archived sessions',
+      projectFilterAria: 'Filter by project',
+      allProjects: 'All projects',
+      groupCountOne: '1 session',
+      groupCount: '{count} sessions',
       cancel: 'Unarchive',
       cancelAria: 'Unarchive {name}',
       restoring: 'Restoring…',
+      delete: 'Delete',
+      deleteAria: 'Delete {name}',
+      deleteAll: 'Delete all',
+      deleteUnavailableTitle: 'Permanent deletion is not available yet',
+      deleteUnavailableDescription: 'DeepSeek Harness does not currently expose a safe session deletion API. This plugin will not delete storage files directly because that could corrupt session indexes or history. This action will be enabled when an official API is available.',
       restoreFailedTitle: 'Could not unarchive session',
       restoreFailedDescription: 'The plugin could not update the archive state. Please try again.',
       close: 'Close',
     }
 
-    function workspaceTitle(sessionId, workspaces, fallback) {
-      return workspaces.find((workspace) => workspace.sessionIds.includes(sessionId))?.title ?? fallback
+    function workspaceForSession(sessionId, workspaces, fallback) {
+      const workspace = workspaces.find((candidate) => candidate.sessionIds.includes(sessionId))
+      return workspace === undefined
+        ? { key: UNGROUPED_PROJECT, id: null, title: fallback }
+        : { key: `workspace:${workspace.workspaceId}`, id: workspace.workspaceId, title: workspace.title }
     }
 
     function formatUpdatedAt(updatedAt, fallback) {
@@ -199,23 +354,84 @@ window.__ModuleLoader__.load({
       }).format(new Date(updatedAt))
     }
 
+    function buildArchivedRows(archivedSessionIds, sessionsById, workspaces, fallbackWorkspace, fallbackTime) {
+      return [...archivedSessionIds].reverse().map((sessionId) => {
+        const session = sessionsById[sessionId]
+        const workspace = workspaceForSession(sessionId, workspaces, fallbackWorkspace)
+        return {
+          id: sessionId,
+          name: session?.displayTitle ?? sessionId,
+          workspaceKey: workspace.key,
+          workspaceId: workspace.id,
+          workspace: workspace.title,
+          updatedAt: formatUpdatedAt(session?.updatedAt, fallbackTime),
+        }
+      })
+    }
+
+    function filterArchivedRows(rows, query, projectKey) {
+      const needle = query.trim().toLocaleLowerCase()
+      return rows.filter((row) => {
+        if (projectKey !== ALL_PROJECTS && row.workspaceKey !== projectKey) return false
+        if (needle.length === 0) return true
+        return `${row.name}\n${row.workspace}\n${row.id}`.toLocaleLowerCase().includes(needle)
+      })
+    }
+
+    function groupArchivedRows(rows) {
+      const groups = []
+      const byKey = new Map()
+      for (const row of rows) {
+        let group = byKey.get(row.workspaceKey)
+        if (group === undefined) {
+          group = { key: row.workspaceKey, title: row.workspace, rows: [] }
+          byKey.set(row.workspaceKey, group)
+          groups.push(group)
+        }
+        group.rows.push(row)
+      }
+      return groups
+    }
+
+    function listArchivedProjects(rows) {
+      const projects = []
+      const seen = new Set()
+      for (const row of rows) {
+        if (seen.has(row.workspaceKey)) continue
+        seen.add(row.workspaceKey)
+        projects.push({ key: row.workspaceKey, title: row.workspace })
+      }
+      return projects
+    }
+
     function ArchivedSessionsSection({ restore, useSessions, useWorkspaces, t }) {
       const archivedSessionIds = useWorkspaces((state) => state.archivedSessionIds)
       const workspaces = useWorkspaces((state) => state.items)
       const sessionsById = useSessions((state) => state.byId)
       const [restoringId, setRestoringId] = useState(null)
       const [restoreError, setRestoreError] = useState(null)
+      const [searchQuery, setSearchQuery] = useState('')
+      const [projectKey, setProjectKey] = useState(ALL_PROJECTS)
+      const [deleteNoticeOpen, setDeleteNoticeOpen] = useState(false)
 
-      const rows = useMemo(() => [...archivedSessionIds].reverse().map((sessionId) => {
-        const session = sessionsById[sessionId]
-        const name = session?.displayTitle ?? sessionId
-        return {
-          id: sessionId,
-          name,
-          workspace: workspaceTitle(sessionId, workspaces, t('ungrouped')),
-          updatedAt: formatUpdatedAt(session?.updatedAt, t('unavailableTime')),
+      const rows = useMemo(() => buildArchivedRows(
+        archivedSessionIds,
+        sessionsById,
+        workspaces,
+        t('ungrouped'),
+        t('unavailableTime'),
+      ), [archivedSessionIds, sessionsById, t, workspaces])
+      const projects = useMemo(() => listArchivedProjects(rows), [rows])
+      useEffect(() => {
+        if (projectKey !== ALL_PROJECTS && !projects.some((project) => project.key === projectKey)) {
+          setProjectKey(ALL_PROJECTS)
         }
-      }), [archivedSessionIds, sessionsById, t, workspaces])
+      }, [projectKey, projects])
+      const filteredRows = useMemo(
+        () => filterArchivedRows(rows, searchQuery, projectKey),
+        [projectKey, rows, searchQuery],
+      )
+      const groups = useMemo(() => groupArchivedRows(filteredRows), [filteredRows])
 
       return jsxs(Fragment, {
         children: [
@@ -225,45 +441,132 @@ window.__ModuleLoader__.load({
               jsxs('div', {
                 className: 'dhd-archived-heading',
                 children: [
-                  jsx('h2', { className: 'dhd-archived-title', children: t('title') }),
-                  jsx('p', { className: 'dhd-archived-description', children: t('description') }),
+                  jsxs('div', {
+                    className: 'dhd-archived-heading-copy',
+                    children: [
+                      jsx('h2', { className: 'dhd-archived-title', children: t('title') }),
+                      jsx('p', { className: 'dhd-archived-description', children: t('description') }),
+                    ],
+                  }),
+                  rows.length === 0 ? null : jsx('button', {
+                    type: 'button',
+                    className: 'dhd-archived-delete dhd-archived-delete-all',
+                    onClick: () => setDeleteNoticeOpen(true),
+                    children: t('deleteAll'),
+                  }),
                 ],
               }),
               rows.length === 0
                 ? jsx('div', { className: 'dhd-archived-empty', children: t('empty') })
-                : jsx('div', {
-                    className: 'dhd-archived-list',
-                    children: rows.map((row) => jsxs('div', {
-                      className: 'dhd-archived-row',
-                      children: [
-                        jsxs('div', {
-                          className: 'dhd-archived-copy',
-                          children: [
-                            jsx('div', { className: 'dhd-archived-name', title: row.name, children: row.name }),
-                            jsx('div', { className: 'dhd-archived-meta', children: `${row.workspace} · ${row.updatedAt}` }),
-                          ],
-                        }),
-                        jsx(Button, {
-                          variant: 'outline',
-                          size: 'sm',
-                          disabled: restoringId !== null,
-                          'aria-label': t('cancelAria', { name: row.name }),
-                          onClick: async () => {
-                            setRestoringId(row.id)
-                            try {
-                              await restore(row.id)
-                            } catch (error) {
-                              setRestoreError(error instanceof Error ? error.message : String(error))
-                            } finally {
-                              setRestoringId(null)
-                            }
-                          },
-                          children: restoringId === row.id ? t('restoring') : t('cancel'),
-                        }),
-                      ],
-                    }, row.id)),
+                : jsxs(Fragment, {
+                    children: [
+                      jsxs('div', {
+                        className: 'dhd-archived-toolbar',
+                        children: [
+                          jsx('input', {
+                            type: 'search',
+                            className: 'dhd-archived-search',
+                            value: searchQuery,
+                            placeholder: t('searchPlaceholder'),
+                            'aria-label': t('searchAria'),
+                            onChange: (event) => setSearchQuery(event.currentTarget.value),
+                          }),
+                          jsxs('select', {
+                            className: 'dhd-archived-project-select',
+                            value: projectKey,
+                            'aria-label': t('projectFilterAria'),
+                            onChange: (event) => setProjectKey(event.currentTarget.value),
+                            children: [
+                              jsx('option', { value: ALL_PROJECTS, children: t('allProjects') }),
+                              ...projects.map((project) => jsx('option', {
+                                value: project.key,
+                                children: project.title,
+                              }, project.key)),
+                            ],
+                          }),
+                        ],
+                      }),
+                      filteredRows.length === 0
+                        ? jsx('div', { className: 'dhd-archived-empty', children: t('emptyFiltered') })
+                        : jsx('div', {
+                            className: 'dhd-archived-groups',
+                            children: groups.map((group) => jsxs('section', {
+                              className: 'dhd-archived-group',
+                              children: [
+                                jsxs('div', {
+                                  className: 'dhd-archived-group-heading',
+                                  children: [
+                                    jsx('h3', { className: 'dhd-archived-group-title', children: group.title }),
+                                    jsx('span', {
+                                      className: 'dhd-archived-group-count',
+                                      children: group.rows.length === 1
+                                        ? t('groupCountOne')
+                                        : t('groupCount', { count: group.rows.length }),
+                                    }),
+                                  ],
+                                }),
+                                jsx('div', {
+                                  className: 'dhd-archived-list',
+                                  children: group.rows.map((row) => jsxs('div', {
+                                    className: 'dhd-archived-row',
+                                    children: [
+                                      jsxs('div', {
+                                        className: 'dhd-archived-copy',
+                                        children: [
+                                          jsx('div', { className: 'dhd-archived-name', title: row.name, children: row.name }),
+                                          jsx('div', { className: 'dhd-archived-meta', children: row.updatedAt }),
+                                        ],
+                                      }),
+                                      jsxs('div', {
+                                        className: 'dhd-archived-actions',
+                                        children: [
+                                          jsx('button', {
+                                            type: 'button',
+                                            className: 'dhd-archived-delete',
+                                            'aria-label': t('deleteAria', { name: row.name }),
+                                            onClick: () => setDeleteNoticeOpen(true),
+                                            children: t('delete'),
+                                          }),
+                                          jsx(Button, {
+                                            variant: 'outline',
+                                            size: 'sm',
+                                            disabled: restoringId !== null,
+                                            'aria-label': t('cancelAria', { name: row.name }),
+                                            onClick: async () => {
+                                              setRestoringId(row.id)
+                                              try {
+                                                await restore(row.id)
+                                              } catch (error) {
+                                                setRestoreError(error instanceof Error ? error.message : String(error))
+                                              } finally {
+                                                setRestoringId(null)
+                                              }
+                                            },
+                                            children: restoringId === row.id ? t('restoring') : t('cancel'),
+                                          }),
+                                        ],
+                                      }),
+                                    ],
+                                  }, row.id)),
+                                }),
+                              ],
+                            }, group.key)),
+                          }),
+                    ],
                   }),
             ],
+          }),
+          jsx(Modal, {
+            open: deleteNoticeOpen,
+            onClose: () => setDeleteNoticeOpen(false),
+            closeLabel: t('close'),
+            title: t('deleteUnavailableTitle'),
+            description: t('deleteUnavailableDescription'),
+            footer: jsx(Button, {
+              variant: 'primary',
+              onClick: () => setDeleteNoticeOpen(false),
+              children: t('close'),
+            }),
           }),
           jsx(Modal, {
             open: restoreError !== null,
@@ -316,6 +619,12 @@ window.__ModuleLoader__.load({
     }
 
     exports.NS = NS
+    exports.ALL_PROJECTS = ALL_PROJECTS
+    exports.UNGROUPED_PROJECT = UNGROUPED_PROJECT
+    exports.buildArchivedRows = buildArchivedRows
+    exports.filterArchivedRows = filterArchivedRows
+    exports.groupArchivedRows = groupArchivedRows
+    exports.listArchivedProjects = listArchivedProjects
     exports.apply = apply
     exports.inject = inject
     return module.exports
