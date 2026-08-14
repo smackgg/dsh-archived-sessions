@@ -29,7 +29,9 @@ async function loadClientExports() {
   return definition.factory((id) => {
     if (id === 'react/jsx-runtime') return { Fragment: Symbol('Fragment'), jsx() {}, jsxs() {} }
     if (id === 'react') return { useEffect() {}, useMemo() {}, useState() {} }
-    if (id === '@deepseek-ai/dsh-client-ui-primitives') return { Button() {}, Modal() {} }
+    if (id === '@deepseek-ai/dsh-client-ui-primitives') {
+      return { Button() {}, IconChevronDownOutline14() {}, Menu() {}, Modal() {} }
+    }
     if (id === '@deepseek-ai/dsh-client-web-react') return { bindSnapshotSelector() {} }
     throw new Error(`Unexpected client module: ${id}`)
   })
@@ -114,6 +116,15 @@ test('delete controls disclose the missing safe Harness API', async () => {
   assert.match(client, /deleteAll:\s*'全部删除'/)
   assert.match(client, /DeepSeek Harness 当前没有提供安全的会话删除 API/)
   assert.doesNotMatch(client, /unlink\(|rmSync|removeSession|deleteSession/)
+})
+
+test('project filter uses the themed Harness menu instead of a native select', async () => {
+  const client = await readFile(clientUrl, 'utf8')
+
+  assert.match(client, /const \{[\s\S]*Menu,[\s\S]*\} = require\('@deepseek-ai\/dsh-client-ui-primitives'\)/)
+  assert.match(client, /selectedId:\s*projectKey/)
+  assert.match(client, /'aria-haspopup':\s*'menu'/)
+  assert.doesNotMatch(client, /jsx\('select'/)
 })
 
 test('Host and Client publish matching strict restore descriptors', () => {

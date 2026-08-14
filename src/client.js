@@ -7,7 +7,12 @@ window.__ModuleLoader__.load({
 
     const { Fragment, jsx, jsxs } = require('react/jsx-runtime')
     const { useEffect, useMemo, useState } = require('react')
-    const { Button, Modal } = require('@deepseek-ai/dsh-client-ui-primitives')
+    const {
+      Button,
+      IconChevronDownOutline14,
+      Menu,
+      Modal,
+    } = require('@deepseek-ai/dsh-client-ui-primitives')
     const { bindSnapshotSelector } = require('@deepseek-ai/dsh-client-web-react')
 
     const NS = 'settings.archivedSessions'
@@ -119,7 +124,7 @@ window.__ModuleLoader__.load({
       }
 
       .dhd-archived-search,
-      .dhd-archived-project-select {
+      .dhd-archived-project-trigger {
         box-sizing: border-box;
         height: 36px;
         border: 1px solid var(--dsw-alias-border-l2);
@@ -141,13 +146,40 @@ window.__ModuleLoader__.load({
         color: var(--dsw-alias-label-secondary);
       }
 
-      .dhd-archived-project-select {
+      .dhd-archived-project-menu {
+        display: block;
         width: min(220px, 38%);
-        padding: 0 30px 0 10px;
+        flex: none;
+      }
+
+      .dhd-archived-project-trigger {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 0 10px 0 12px;
+        cursor: pointer;
+        text-align: left;
+      }
+
+      .dhd-archived-project-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .dhd-archived-project-chevron {
+        flex: none;
+        transition: transform 120ms ease;
+      }
+
+      .dhd-archived-project-chevron-open {
+        transform: rotate(180deg);
       }
 
       .dhd-archived-search:focus,
-      .dhd-archived-project-select:focus {
+      .dhd-archived-project-trigger:focus-visible {
         border-color: var(--dsw-alias-label-secondary);
       }
 
@@ -264,7 +296,7 @@ window.__ModuleLoader__.load({
           flex-direction: column;
         }
 
-        .dhd-archived-project-select {
+        .dhd-archived-project-menu {
           width: 100%;
         }
 
@@ -412,6 +444,7 @@ window.__ModuleLoader__.load({
       const [restoreError, setRestoreError] = useState(null)
       const [searchQuery, setSearchQuery] = useState('')
       const [projectKey, setProjectKey] = useState(ALL_PROJECTS)
+      const [projectMenuOpen, setProjectMenuOpen] = useState(false)
       const [deleteNoticeOpen, setDeleteNoticeOpen] = useState(false)
 
       const rows = useMemo(() => buildArchivedRows(
@@ -432,6 +465,13 @@ window.__ModuleLoader__.load({
         [projectKey, rows, searchQuery],
       )
       const groups = useMemo(() => groupArchivedRows(filteredRows), [filteredRows])
+      const projectMenuItems = useMemo(() => [
+        { id: ALL_PROJECTS, label: t('allProjects') },
+        ...projects.map((project) => ({ id: project.key, label: project.title })),
+      ], [projects, t])
+      const selectedProjectLabel = projectKey === ALL_PROJECTS
+        ? t('allProjects')
+        : projects.find((project) => project.key === projectKey)?.title ?? t('allProjects')
 
       return jsxs(Fragment, {
         children: [
@@ -471,18 +511,38 @@ window.__ModuleLoader__.load({
                             'aria-label': t('searchAria'),
                             onChange: (event) => setSearchQuery(event.currentTarget.value),
                           }),
-                          jsxs('select', {
-                            className: 'dhd-archived-project-select',
-                            value: projectKey,
-                            'aria-label': t('projectFilterAria'),
-                            onChange: (event) => setProjectKey(event.currentTarget.value),
-                            children: [
-                              jsx('option', { value: ALL_PROJECTS, children: t('allProjects') }),
-                              ...projects.map((project) => jsx('option', {
-                                value: project.key,
-                                children: project.title,
-                              }, project.key)),
-                            ],
+                          jsx(Menu, {
+                            className: 'dhd-archived-project-menu',
+                            open: projectMenuOpen,
+                            onClose: () => setProjectMenuOpen(false),
+                            items: projectMenuItems,
+                            selectedId: projectKey,
+                            onSelect: (id) => {
+                              setProjectKey(id)
+                              setProjectMenuOpen(false)
+                            },
+                            align: 'end',
+                            portal: true,
+                            dense: true,
+                            anchor: jsxs('button', {
+                              type: 'button',
+                              className: 'dhd-archived-project-trigger',
+                              'aria-label': t('projectFilterAria'),
+                              'aria-haspopup': 'menu',
+                              'aria-expanded': projectMenuOpen,
+                              onClick: () => setProjectMenuOpen((open) => !open),
+                              children: [
+                                jsx('span', {
+                                  className: 'dhd-archived-project-label',
+                                  children: selectedProjectLabel,
+                                }),
+                                jsx(IconChevronDownOutline14, {
+                                  className: projectMenuOpen
+                                    ? 'dhd-archived-project-chevron dhd-archived-project-chevron-open'
+                                    : 'dhd-archived-project-chevron',
+                                }),
+                              ],
+                            }),
                           }),
                         ],
                       }),
