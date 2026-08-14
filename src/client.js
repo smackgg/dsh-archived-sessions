@@ -161,7 +161,7 @@ window.__ModuleLoader__.load({
       empty: '暂无已归档会话',
       ungrouped: '未分组',
       unavailableTime: '时间未知',
-      cancel: '取消',
+      cancel: '取消归档',
       cancelAria: '取消归档 {name}',
       restoring: '恢复中…',
       restoreFailedTitle: '取消归档失败',
