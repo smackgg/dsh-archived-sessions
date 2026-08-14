@@ -4,6 +4,10 @@
 
 An installable [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) **plugin bundle** that adds an **Archived** settings page and restores archived sessions.
 
+## Screenshot
+
+![Archived sessions settings page in English](./docs/images/archived-sessions.en.png)
+
 ## Features
 
 - Lists archived sessions with their title, workspace, and last update time.

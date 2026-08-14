@@ -4,6 +4,10 @@
 
 一个可安装的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) **插件组合包（plugin bundle）**，用于增加“已归档”设置页并恢复已归档会话。
 
+## 界面预览
+
+![已归档会话中文设置页](./docs/images/archived-sessions.zh-CN.png)
+
 ## 功能
 
 - 展示已归档会话的标题、所属工作区和最后更新时间。
