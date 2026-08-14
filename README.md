@@ -2,7 +2,7 @@
 
 [简体中文](./README.zh-CN.md)
 
-An installable [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) bundle that adds an **Archived** settings page and restores archived sessions.
+An installable [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) **plugin bundle** that adds an **Archived** settings page and restores archived sessions.
 
 ## Features
 

@@ -2,7 +2,7 @@
 
 [English](./README.md)
 
-一个可安装的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 组合包（bundle），用于增加“已归档”设置页并恢复已归档会话。
+一个可安装的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) **插件组合包（plugin bundle）**，用于增加“已归档”设置页并恢复已归档会话。
 
 ## 功能
 
