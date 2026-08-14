@@ -55,7 +55,7 @@ dsh --profile web --dump-config
 dsh --profile web
 ```
 
-打开“设置 → 插件 → 插件列表”，搜索 `dsh-archived-sessions`，应显示为“已启用”。恢复入口位于“设置 → 已归档”。
+打开“设置 → 插件 → 插件列表”，搜索 `archived-sessions`，挂载的模块应显示为“已启用”。可安装包名是 `dsh-archived-sessions`，Harness 在此列表中展示的是模块 ID。恢复入口位于“设置 → 已归档”。
 
 安装或升级后，需要重启正在运行的 Harness 或桌面客户端。
 

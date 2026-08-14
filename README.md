@@ -55,7 +55,7 @@ dsh --profile web --dump-config
 dsh --profile web
 ```
 
-Open **Settings → Plugins → Plugin list** and search for `dsh-archived-sessions`. The plugin should be enabled. The restore UI is available under **Settings → Archived**.
+Open **Settings → Plugins → Plugin list** and search for `archived-sessions`. The mounted module should be enabled. The installable package is named `dsh-archived-sessions`; Harness shows the module ID in this list. The restore UI is available under **Settings → Archived**.
 
 Restart a running Harness or desktop client after installing or updating the plugin.
 
