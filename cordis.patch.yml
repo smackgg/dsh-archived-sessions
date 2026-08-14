@@ -1,0 +1,3 @@
+- insert:
+    - id: ui-archived-sessions
+      name: 'dsh-archived-sessions'
